@@ -113,6 +113,48 @@ def collect_real_yields() -> list[Evidence]:
     )
 
 
+def collect_nominal_yields() -> list[Evidence]:
+    year = datetime.now(UTC).year
+    url = (
+        "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/"
+        f"pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={year}"
+    )
+    root = ET.fromstring(_request(url))
+    rows: list[tuple[datetime, float]] = []
+    for entry in root.findall("{http://www.w3.org/2005/Atom}entry"):
+        props = entry.find(".//{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}properties")
+        if props is None:
+            continue
+        values = {node.tag.split("}")[-1]: node.text for node in props}
+        date_text = values.get("NEW_DATE") or values.get("Date")
+        yield_text = values.get("BC_10YEAR")
+        if date_text and yield_text:
+            observed = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+            if observed.tzinfo is None:
+                observed = observed.replace(tzinfo=UTC)
+            rows.append((observed, float(yield_text)))
+    rows.sort(key=lambda item: item[0])
+    if len(rows) < 6:
+        raise ValueError("Treasury returned insufficient nominal-yield history")
+    latest_date, latest = rows[-1]
+
+    def score(window: int, multiplier: float) -> float:
+        old = rows[max(0, len(rows) - window)][1]
+        return _clamp(-(latest - old) * multiplier)
+
+    scores = {
+        Horizon.STRUCTURAL: score(60, 55),
+        Horizon.INTERMEDIATE: score(22, 75),
+        Horizon.TACTICAL: score(6, 95),
+    }
+    trend = "falling" if scores[Horizon.INTERMEDIATE] > 0 else "rising"
+    return _horizon_evidence(
+        "nominal_yields", scores, 0.92, latest_date, "US Treasury",
+        f"10Y Treasury yield {latest:.2f}%, {trend} over the intermediate window",
+        {"url": url, "latest_value": latest, "unit": "percent"},
+    )
+
+
 def collect_fed_policy() -> list[Evidence]:
     url = "https://markets.newyorkfed.org/api/rates/unsecured/effr/last/60.json"
     data = _json(url).get("refRates", [])
@@ -164,6 +206,68 @@ def collect_usd() -> list[Evidence]:
         "usd", scores, 0.9, date, "Yahoo Finance market feed",
         f"DXY {latest:.2f}; dollar is {trend} over the intermediate window",
         {"url": url, "latest_value": latest, "symbol": "DX-Y.NYB"},
+    )
+
+
+def _market_chart(symbol: str, range_: str = "6mo") -> tuple[list[float], list[float], list[int], str]:
+    encoded = urllib.parse.quote(symbol, safe="")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded}?range={range_}&interval=1d"
+    result = _json(url)["chart"]["result"][0]
+    quote = result["indicators"]["quote"][0]
+    closes = [value for value in quote["close"] if value is not None]
+    volumes = [float(value or 0) for value in quote.get("volume", [])]
+    return closes, volumes, result["timestamp"], url
+
+
+def collect_risk_sentiment() -> list[Evidence]:
+    closes, _, timestamps, url = _market_chart("^VIX")
+    if len(closes) < 31:
+        raise ValueError("VIX provider returned insufficient history")
+    latest = closes[-1]
+
+    def pct(days: int) -> float:
+        return (latest / closes[max(0, len(closes) - days - 1)] - 1) * 100
+
+    level_component = (latest - 20) * 2
+    scores = {
+        Horizon.STRUCTURAL: _clamp(level_component * 0.35 + pct(90) * 0.25),
+        Horizon.INTERMEDIATE: _clamp(level_component * 0.6 + pct(30) * 0.55),
+        Horizon.TACTICAL: _clamp(level_component + pct(5) * 0.9),
+    }
+    observed = datetime.fromtimestamp(timestamps[-1], UTC)
+    mood = "risk-off" if scores[Horizon.TACTICAL] > 8 else "risk-on" if scores[Horizon.TACTICAL] < -8 else "mixed"
+    return _horizon_evidence(
+        "risk_sentiment", scores, 0.82, observed, "Yahoo Finance market feed",
+        f"VIX {latest:.2f}; current market mood is {mood}",
+        {"url": url, "latest_value": latest, "symbol": "^VIX"},
+    )
+
+
+def collect_flows_proxy() -> list[Evidence]:
+    closes, volumes, timestamps, url = _market_chart("GLD")
+    if len(closes) < 31:
+        raise ValueError("GLD provider returned insufficient history")
+    latest = closes[-1]
+    recent_volume = sum(volumes[-5:]) / max(1, len(volumes[-5:]))
+    baseline_volume = sum(volumes[-30:]) / max(1, len(volumes[-30:]))
+    volume_ratio = recent_volume / baseline_volume if baseline_volume else 1
+
+    def momentum(days: int, multiplier: float) -> float:
+        old = closes[max(0, len(closes) - days - 1)]
+        change = (latest / old - 1) * 100
+        return _clamp(change * multiplier * min(1.5, max(0.7, volume_ratio)))
+
+    scores = {
+        Horizon.STRUCTURAL: momentum(120, 5),
+        Horizon.INTERMEDIATE: momentum(30, 7),
+        Horizon.TACTICAL: momentum(5, 10),
+    }
+    observed = datetime.fromtimestamp(timestamps[-1], UTC)
+    direction = "accumulation" if scores[Horizon.INTERMEDIATE] > 8 else "distribution" if scores[Horizon.INTERMEDIATE] < -8 else "balanced"
+    return _horizon_evidence(
+        "flows", scores, 0.68, observed, "GLD market proxy via Yahoo Finance",
+        f"GLD price-volume momentum indicates {direction}; volume ratio {volume_ratio:.2f}x",
+        {"url": url, "latest_value": latest, "symbol": "GLD", "proxy": True, "volume_ratio": volume_ratio},
     )
 
 
@@ -270,8 +374,11 @@ def collect_news() -> list[Evidence]:
 
 COLLECTORS: tuple[Callable[[], list[Evidence]], ...] = (
     collect_real_yields,
+    collect_nominal_yields,
     collect_fed_policy,
     collect_usd,
+    collect_risk_sentiment,
+    collect_flows_proxy,
     collect_bls,
     collect_news,
 )

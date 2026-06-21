@@ -31,11 +31,11 @@ class EngineTests(unittest.TestCase):
     def test_engine_is_deterministic_and_exposes_contradictions(self) -> None:
         result = MacroEngine().assess(
             "XAUUSD",
-            [evidence("fed_policy", 80), evidence("real_yields", 80), evidence("usd", -80)],
+            [evidence("fed_policy", 80), evidence("real_yields", 80), evidence("usd", -40)],
             NOW,
         )
         intermediate = next(h for h in result.horizons if h.horizon == Horizon.INTERMEDIATE)
-        self.assertAlmostEqual(intermediate.score, 24)
+        self.assertAlmostEqual(intermediate.score, 20.4)
         self.assertEqual(intermediate.direction, Direction.BULLISH)
         self.assertEqual(
             result.contradictions,

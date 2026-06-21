@@ -71,6 +71,27 @@
         </section>
       </aside>
     </section>
+
+    <section class="panel method-panel">
+      <button id="method-toggle" class="method-toggle" type="button" aria-expanded="false">
+        <span><b>ⓘ</b> How the reading is built</span><i>⌄</i>
+      </button>
+      <div id="method-content" class="method-content" hidden>
+        <div>
+          <p class="eyebrow">Deterministic judgement</p>
+          <h3>Score × significance × confidence × freshness × horizon weight</h3>
+          <p>Every input is first converted to a gold-relative score from −100 to +100. The engine decays old observations, applies the configured factor weight for that horizon, and adds the resulting point contributions. AI or news classification cannot directly set the final direction.</p>
+        </div>
+        <div>
+          <p class="eyebrow">Weight hierarchy</p>
+          <p>Real yields and Fed policy dominate the structural regime. USD, rates, geopolitics, VIX and positioning gain influence at shorter horizons. Nominal yields are deliberately lighter than real yields to reduce double counting.</p>
+        </div>
+        <div>
+          <p class="eyebrow">Honest limitations</p>
+          <p>ETF positioning currently uses GLD price-volume momentum as a proxy, clearly labelled in its factor details. News factors use a transparent keyword classifier. These receive lower confidence than official economic and rate data.</p>
+        </div>
+      </div>
+    </section>
     <footer>Auditable signals · deterministic scoring · local-first architecture</footer>
   </main>
   <div id="error" class="error-toast" role="alert"></div>

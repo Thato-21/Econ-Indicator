@@ -87,7 +87,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         "metadata": pack.metadata,
                     },
                     "data_status": data_status,
-                    "factors": [asdict(factor) for factor in pack.factors],
+                    "factors": [
+                        {
+                            **asdict(factor),
+                            "weights": {
+                                horizon.value: pack.weights[horizon][factor.id]
+                                for horizon in Horizon
+                            },
+                        }
+                        for factor in pack.factors
+                    ],
                     "evidence": [asdict(item) for item in evidence],
                 }
             )

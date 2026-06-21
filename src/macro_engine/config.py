@@ -13,6 +13,7 @@ class FactorConfig:
     label: str
     category: str
     decay_half_life_days: int
+    why: str = ""
 
 
 @dataclass(frozen=True)
@@ -63,4 +64,3 @@ class AssetPack:
         if factor is None:
             raise KeyError(f"factor {factor_id!r} is not in asset pack {self.asset_id!r}")
         return timedelta(days=factor.decay_half_life_days)
-

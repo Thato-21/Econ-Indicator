@@ -8,7 +8,7 @@ const pretty = value => value.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpp
 const signed = value => `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
 const scoreColor = value => value >= 0 ? "var(--green)" : "var(--red)";
 
-function horizonCard(horizon, labels) {
+function horizonCard(horizon, labels, previous) {
   const [title, subtitle] = horizonNames[horizon.horizon];
   const active = horizon.factors.filter(f => f.confidence > 0);
   const drivers = [...active]
@@ -22,14 +22,16 @@ function horizonCard(horizon, labels) {
       <div class="gauge-labels"><span>BEAR</span><span>BULL</span></div></div>
     <div class="direction" style="color:${scoreColor(horizon.score)}">${pretty(horizon.direction)}</div>
     <div class="card-confidence">confidence ${Math.round(horizon.confidence * 100)}% · ${active.length}/${horizon.factors.length} active factors</div>
+    <div class="change-note">${previous && previous !== horizon.direction ? `↻ changed from ${pretty(previous).toLowerCase()}` : ""}</div>
     <div class="driver-list"><span>TOP DRIVERS</span>
-      ${drivers.length ? drivers.map(f => `<div class="driver"><b>${labels[f.factor] || pretty(f.factor)}</b><em style="color:${scoreColor(f.score)}">${f.score >= 0 ? "▲" : "▼"} ${signed(f.score)}</em></div>`).join("") : '<div class="empty-state">No evidence for this horizon</div>'}
+      ${drivers.length ? drivers.map(f => `<div class="driver"><b>${labels[f.factor] || pretty(f.factor)}</b><em style="color:${scoreColor(f.contribution)}">${f.contribution >= 0 ? "▲" : "▼"} ${signed(f.contribution)} pts</em></div>`).join("") : '<div class="empty-state">No evidence for this horizon</div>'}
     </div></article>`;
 }
 
 function render(data) {
   const { assessment, asset, factors, evidence, data_status: dataStatus } = data;
   const labels = Object.fromEntries(factors.map(f => [f.id, f.label]));
+  const previous = JSON.parse(localStorage.getItem(`macro-snapshot:${asset.id}`) || "null");
   document.querySelector("#asset-chip").textContent = asset.id.replace("USD", " · USD");
   document.querySelector("#summary").textContent = assessment.horizons.map(h => `${horizonNames[h.horizon][0]} ${pretty(h.direction).toLowerCase()}`).join(" · ");
   document.querySelector("#overall-score").textContent = signed(assessment.overall_score);
@@ -44,7 +46,7 @@ function render(data) {
   dataMode.innerHTML = `<span></span>${isSample ? "SAMPLE DATA" : dataStatus.mode === "live-partial" ? "LIVE · PARTIAL" : "LIVE DATA"}`;
   const errors = (dataStatus.errors || []).join(" | ");
   dataMode.title = `${dataStatus.message}${errors ? ` · ${errors}` : ""}`;
-  document.querySelector("#horizon-grid").innerHTML = assessment.horizons.map(h => horizonCard(h, labels)).join("");
+  document.querySelector("#horizon-grid").innerHTML = assessment.horizons.map(h => horizonCard(h, labels, previous?.[h.horizon])).join("");
   document.querySelector("#thesis").textContent = assessment.narrative;
   document.querySelector("#confidence").textContent = `${Math.round(assessment.overall_confidence * 100)}%`;
   document.querySelector("#confidence-bar").style.width = `${assessment.overall_confidence * 100}%`;
@@ -60,13 +62,24 @@ function render(data) {
     const item = latestByFactor[config.id];
     const width = Math.min(50, Math.abs(score) / 2);
     const positive = score >= 0;
+    const resultByHorizon = Object.fromEntries(assessment.horizons.map(h => [h.horizon, h.factors.find(f => f.factor === config.id)]));
     return `<div class="factor-row">
-      <div class="factor-name"><strong>${config.label}</strong><small>${pretty(config.category)} · half-life ${config.decay_half_life_days}d</small></div>
-      <div class="factor-bar"><span style="--width:${width}%;--left:${positive ? 50 : 50 - width}%;--bar-color:${scoreColor(score)}"></span></div>
-      <div class="factor-value" style="--bar-color:${scoreColor(score)}">${item ? signed(score) : "NO DATA"}</div>
-      ${item ? `<div class="factor-note">${item.summary} · ${new Date(item.observed_at).toLocaleDateString()}</div>` : ""}
+      <button class="factor-summary" type="button" aria-expanded="false">
+        <div class="factor-name"><strong>${config.label}</strong><small>${pretty(config.category)} · half-life ${config.decay_half_life_days}d</small></div>
+        <div class="factor-bar"><span style="--width:${width}%;--left:${positive ? 50 : 50 - width}%;--bar-color:${scoreColor(score)}"></span></div>
+        <div class="factor-value" style="--bar-color:${scoreColor(score)}">${item ? signed(score) : "NO DATA"}</div>
+        <span class="factor-chevron">⌄</span>
+      </button>
+      <div class="factor-details">
+        <div><p class="eyebrow">Why it matters</p><p>${config.why || "No interpretation has been configured."}</p></div>
+        <div class="detail-latest"><p class="eyebrow">Latest evidence</p><p>${item ? item.summary : "No current evidence."}</p>
+          ${item ? `<div class="detail-meta">${item.source} · ${new Date(item.observed_at).toLocaleString()}${item.metadata?.proxy ? " · PROXY" : ""}</div>` : ""}
+          <div class="weight-grid">${["structural", "intermediate", "tactical"].map(h => `<div class="weight-chip"><span>${h.toUpperCase()}</span><strong>${Math.round(config.weights[h] * 100)}% · ${signed(resultByHorizon[h]?.contribution || 0)} pts</strong></div>`).join("")}</div>
+        </div>
+      </div>
     </div>`;
   }).join("");
+  localStorage.setItem(`macro-snapshot:${asset.id}`, JSON.stringify(Object.fromEntries(assessment.horizons.map(h => [h.horizon, h.direction]))));
 }
 
 async function load(force = false) {
@@ -90,4 +103,18 @@ async function load(force = false) {
 }
 
 document.querySelector("#refresh").addEventListener("click", () => load(true));
+document.querySelector("#factor-list").addEventListener("click", event => {
+  const button = event.target.closest(".factor-summary");
+  if (!button) return;
+  const row = button.closest(".factor-row");
+  row.classList.toggle("open");
+  button.setAttribute("aria-expanded", String(row.classList.contains("open")));
+});
+document.querySelector("#method-toggle").addEventListener("click", event => {
+  const button = event.currentTarget;
+  const content = document.querySelector("#method-content");
+  const open = button.getAttribute("aria-expanded") === "true";
+  button.setAttribute("aria-expanded", String(!open));
+  content.hidden = open;
+});
 load();

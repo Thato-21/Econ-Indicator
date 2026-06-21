@@ -8,18 +8,21 @@
     "horizons": {"structural": "6-18m", "intermediate": "1-6m", "tactical": "2-8w"}
   },
   "factors": [
-    {"id": "fed_policy", "label": "Federal Reserve policy", "category": "monetary_policy", "decay_half_life_days": 60},
-    {"id": "real_yields", "label": "US real yields", "category": "rates", "decay_half_life_days": 30},
-    {"id": "usd", "label": "US dollar", "category": "fx", "decay_half_life_days": 30},
-    {"id": "geopolitics", "label": "Geopolitical risk", "category": "geopolitics", "decay_half_life_days": 45},
-    {"id": "inflation", "label": "Inflation regime", "category": "macro", "decay_half_life_days": 45},
-    {"id": "growth", "label": "Growth regime", "category": "macro", "decay_half_life_days": 45},
-    {"id": "central_bank_demand", "label": "Official-sector gold demand", "category": "flows", "decay_half_life_days": 120}
+    {"id": "fed_policy", "label": "Federal Reserve policy", "category": "monetary_policy", "decay_half_life_days": 60, "why": "A dovish Fed normally lowers expected real yields and weakens the dollar, both supportive for gold. A hawkish Fed does the reverse."},
+    {"id": "real_yields", "label": "US real yields", "category": "rates", "decay_half_life_days": 30, "why": "Gold pays no income, so falling inflation-adjusted bond yields reduce its opportunity cost. This is one of gold's most important macro drivers."},
+    {"id": "usd", "label": "US dollar (DXY)", "category": "fx", "decay_half_life_days": 30, "why": "Gold is priced in dollars. A weaker dollar generally makes gold cheaper for non-dollar buyers and supports XAUUSD."},
+    {"id": "geopolitics", "label": "Geopolitical risk", "category": "geopolitics", "decay_half_life_days": 45, "why": "Escalating conflict and sanctions can create safe-haven demand. The effect is strongest tactically and should not override rates indefinitely."},
+    {"id": "inflation", "label": "Inflation trend", "category": "macro", "decay_half_life_days": 45, "why": "Inflation affects gold through both purchasing-power demand and the policy response. The model emphasizes whether inflation changes the path of real rates."},
+    {"id": "growth", "label": "Growth & labour data", "category": "macro", "decay_half_life_days": 45, "why": "Weak growth and labour data can increase easing and recession probabilities, while resilient data can keep policy restrictive."},
+    {"id": "central_bank_demand", "label": "Central-bank demand", "category": "flows", "decay_half_life_days": 120, "why": "Persistent official-sector accumulation creates a structural bid and reflects reserve diversification away from traditional currencies."},
+    {"id": "nominal_yields", "label": "10Y Treasury yield", "category": "rates", "decay_half_life_days": 30, "why": "Nominal yields confirm the rate environment and gold's opportunity cost, though they receive less weight than real yields to avoid double counting."},
+    {"id": "risk_sentiment", "label": "Risk sentiment (VIX)", "category": "market_stress", "decay_half_life_days": 14, "why": "Rising fear can support safe-haven demand. During acute liquidity stress, gold may initially be sold to raise cash, so this remains a secondary factor."},
+    {"id": "flows", "label": "ETF flows & positioning", "category": "flows", "decay_half_life_days": 21, "why": "Investor positioning can reinforce or resist the macro regime. The live implementation uses GLD price-volume momentum as a transparent proxy, not claimed fund-flow data."}
   ],
   "weights": {
-    "structural": {"fed_policy": 0.25, "real_yields": 0.20, "usd": 0.15, "geopolitics": 0.15, "inflation": 0.10, "growth": 0.10, "central_bank_demand": 0.05},
-    "intermediate": {"fed_policy": 0.25, "real_yields": 0.20, "usd": 0.15, "geopolitics": 0.15, "inflation": 0.10, "growth": 0.10, "central_bank_demand": 0.05},
-    "tactical": {"fed_policy": 0.25, "real_yields": 0.20, "usd": 0.15, "geopolitics": 0.15, "inflation": 0.10, "growth": 0.10, "central_bank_demand": 0.05}
+    "structural": {"fed_policy": 0.19, "real_yields": 0.18, "usd": 0.10, "geopolitics": 0.07, "inflation": 0.09, "growth": 0.08, "central_bank_demand": 0.15, "nominal_yields": 0.05, "risk_sentiment": 0.03, "flows": 0.06},
+    "intermediate": {"fed_policy": 0.16, "real_yields": 0.17, "usd": 0.15, "geopolitics": 0.10, "inflation": 0.08, "growth": 0.08, "central_bank_demand": 0.05, "nominal_yields": 0.08, "risk_sentiment": 0.06, "flows": 0.07},
+    "tactical": {"fed_policy": 0.10, "real_yields": 0.13, "usd": 0.18, "geopolitics": 0.15, "inflation": 0.05, "growth": 0.06, "central_bank_demand": 0.03, "nominal_yields": 0.10, "risk_sentiment": 0.10, "flows": 0.10}
   },
   "horizon_weights": {"structural": 0.4, "intermediate": 0.35, "tactical": 0.25}
 }
