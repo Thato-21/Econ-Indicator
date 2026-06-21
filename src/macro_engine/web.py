@@ -73,6 +73,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         "name": pack.display_name,
                         "metadata": pack.metadata,
                     },
+                    "data_status": {
+                        "mode": "sample",
+                        "message": "Bundled demonstration evidence; live connectors are not configured",
+                        "newest_observation": max(
+                            (item.observed_at for item in evidence), default=None
+                        ),
+                    },
                     "factors": [asdict(factor) for factor in pack.factors],
                     "evidence": [asdict(item) for item in evidence],
                 }
@@ -120,4 +127,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

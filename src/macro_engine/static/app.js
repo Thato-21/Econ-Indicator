@@ -10,8 +10,8 @@ const scoreColor = value => value >= 0 ? "var(--green)" : "var(--red)";
 
 function horizonCard(horizon, labels) {
   const [title, subtitle] = horizonNames[horizon.horizon];
-  const drivers = [...horizon.factors]
-    .filter(f => Math.abs(f.contribution) > 0)
+  const active = horizon.factors.filter(f => f.confidence > 0);
+  const drivers = [...active]
     .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
     .slice(0, 3);
   const needle = Math.max(-80, Math.min(80, horizon.score * .8));
@@ -21,14 +21,14 @@ function horizonCard(horizon, labels) {
     <div class="gauge"><div class="gauge-track"></div><div class="needle" style="--needle:${needle}deg"></div>
       <div class="gauge-labels"><span>BEAR</span><span>BULL</span></div></div>
     <div class="direction" style="color:${scoreColor(horizon.score)}">${pretty(horizon.direction)}</div>
-    <div class="card-confidence">confidence ${Math.round(horizon.confidence * 100)}% · ${drivers.length}/${horizon.factors.length} active factors</div>
+    <div class="card-confidence">confidence ${Math.round(horizon.confidence * 100)}% · ${active.length}/${horizon.factors.length} active factors</div>
     <div class="driver-list"><span>TOP DRIVERS</span>
       ${drivers.length ? drivers.map(f => `<div class="driver"><b>${labels[f.factor] || pretty(f.factor)}</b><em style="color:${scoreColor(f.score)}">${f.score >= 0 ? "▲" : "▼"} ${signed(f.score)}</em></div>`).join("") : '<div class="empty-state">No evidence for this horizon</div>'}
     </div></article>`;
 }
 
 function render(data) {
-  const { assessment, asset, factors, evidence } = data;
+  const { assessment, asset, factors, evidence, data_status: dataStatus } = data;
   const labels = Object.fromEntries(factors.map(f => [f.id, f.label]));
   document.querySelector("#asset-chip").textContent = asset.id.replace("USD", " · USD");
   document.querySelector("#summary").textContent = assessment.horizons.map(h => `${horizonNames[h.horizon][0]} ${pretty(h.direction).toLowerCase()}`).join(" · ");
@@ -38,6 +38,10 @@ function render(data) {
   document.querySelector(".score-orbit").style.setProperty("--score-angle", `${Math.max(0, Math.min(360, (assessment.overall_score + 100) * 1.8))}deg`);
   document.querySelector("#generated").textContent = `GENERATED ${new Date(assessment.generated_at).toLocaleString()}`;
   document.querySelector("#pack-version").textContent = `ASSET PACK v${assessment.pack_version}`;
+  const dataMode = document.querySelector("#data-mode");
+  dataMode.classList.toggle("sample", dataStatus.mode === "sample");
+  dataMode.innerHTML = `<span></span>${dataStatus.mode === "sample" ? "SAMPLE DATA" : "LIVE DATA"}`;
+  dataMode.title = dataStatus.message;
   document.querySelector("#horizon-grid").innerHTML = assessment.horizons.map(h => horizonCard(h, labels)).join("");
   document.querySelector("#thesis").textContent = assessment.narrative;
   document.querySelector("#confidence").textContent = `${Math.round(assessment.overall_confidence * 100)}%`;
@@ -85,4 +89,3 @@ async function load() {
 
 document.querySelector("#refresh").addEventListener("click", load);
 load();
-

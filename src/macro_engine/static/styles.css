@@ -24,6 +24,8 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opa
 .asset-chip { border: 1px solid rgba(224,185,81,.5); color: var(--gold); padding: 8px 11px; border-radius: 5px; letter-spacing: .16em; }
 .live-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .live-pill span { width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 12px var(--green); }
+.live-pill.sample { color: #d7aa5c; }
+.live-pill.sample span { background: #d7aa5c; box-shadow: 0 0 12px #d7aa5c; }
 .hero-grid { display: grid; grid-template-columns: 1fr 250px; gap: 50px; align-items: end; margin-top: 55px; }
 .eyebrow { color: var(--gold); font: 10px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; }
 h1 { font: 400 clamp(42px, 6vw, 82px)/.95 var(--serif); letter-spacing: -.035em; margin: 0; max-width: 950px; }
