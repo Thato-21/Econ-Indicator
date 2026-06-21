@@ -39,9 +39,11 @@ function render(data) {
   document.querySelector("#generated").textContent = `GENERATED ${new Date(assessment.generated_at).toLocaleString()}`;
   document.querySelector("#pack-version").textContent = `ASSET PACK v${assessment.pack_version}`;
   const dataMode = document.querySelector("#data-mode");
-  dataMode.classList.toggle("sample", dataStatus.mode === "sample");
-  dataMode.innerHTML = `<span></span>${dataStatus.mode === "sample" ? "SAMPLE DATA" : "LIVE DATA"}`;
-  dataMode.title = dataStatus.message;
+  const isSample = dataStatus.mode === "sample";
+  dataMode.classList.toggle("sample", isSample || dataStatus.mode === "live-partial");
+  dataMode.innerHTML = `<span></span>${isSample ? "SAMPLE DATA" : dataStatus.mode === "live-partial" ? "LIVE · PARTIAL" : "LIVE DATA"}`;
+  const errors = (dataStatus.errors || []).join(" | ");
+  dataMode.title = `${dataStatus.message}${errors ? ` · ${errors}` : ""}`;
   document.querySelector("#horizon-grid").innerHTML = assessment.horizons.map(h => horizonCard(h, labels)).join("");
   document.querySelector("#thesis").textContent = assessment.narrative;
   document.querySelector("#confidence").textContent = `${Math.round(assessment.overall_confidence * 100)}%`;
@@ -67,14 +69,14 @@ function render(data) {
   }).join("");
 }
 
-async function load() {
+async function load(force = false) {
   const button = document.querySelector("#refresh");
   const error = document.querySelector("#error");
   button.disabled = true;
   button.textContent = "↻ LOADING";
   error.style.display = "none";
   try {
-    const response = await fetch("/api/assessment", { cache: "no-store" });
+    const response = await fetch(`/api/assessment${force ? "?refresh=1" : ""}`, { cache: "no-store" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
     render(data);
@@ -87,5 +89,5 @@ async function load() {
   }
 }
 
-document.querySelector("#refresh").addEventListener("click", load);
+document.querySelector("#refresh").addEventListener("click", () => load(true));
 load();

@@ -8,3 +8,4 @@ build/
 *.egg-info/
 .env
 .dashboard.pid
+data/live_evidence.json

@@ -29,7 +29,18 @@ Double-click `run-dashboard.cmd`, or run it from PowerShell:
 ```
 
 The dashboard opens at `http://127.0.0.1:8765`. Keep the terminal window open while using it;
-press `Ctrl+C` there to stop the server. It uses only Python's standard library.
+press `Ctrl+C` there to stop the server. It uses only Python's standard library. By default it
+loads latest-available public data from the US Treasury, New York Fed, BLS, Yahoo's DXY market
+feed, and GDELT, then caches successful observations for 30 minutes. The refresh button forces
+a provider update. Provider failures appear as `LIVE · PARTIAL`; they never silently become
+sample values.
+
+For an offline UI demonstration only:
+
+```powershell
+$env:PYTHONPATH = "$PWD\src"
+& "C:\msys64\ucrt64\bin\python.exe" -m macro_engine.web --sample --open
+```
 
 ### Command-line output
 

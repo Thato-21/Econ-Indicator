@@ -9,10 +9,11 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from .domain import Evidence, Horizon
 from .engine import MacroEngine
+from .live import LiveEvidenceService
 
 
 ROOT = Path(__file__).resolve().parent
@@ -37,11 +38,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
     engine = MacroEngine()
     asset_id = "XAUUSD"
     evidence_path = Path("examples/xauusd_evidence.json")
+    live_service: LiveEvidenceService | None = None
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path == "/api/assessment":
-            self._assessment()
+            force = parse_qs(parsed.query).get("refresh") == ["1"]
+            self._assessment(force=force)
             return
         if path == "/api/health":
             self._json({"status": "ok"})
@@ -60,9 +64,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def _assessment(self) -> None:
+    def _assessment(self, force: bool = False) -> None:
         try:
-            evidence = load_evidence(self.evidence_path)
+            if self.live_service:
+                evidence, data_status = self.live_service.collect(force=force)
+            else:
+                evidence = load_evidence(self.evidence_path)
+                data_status = {
+                    "mode": "sample",
+                    "message": "Bundled demonstration evidence; live connectors are not configured",
+                    "newest_observation": max((item.observed_at for item in evidence), default=None),
+                    "errors": [],
+                }
             assessment = self.engine.assess(self.asset_id, evidence)
             pack = self.engine.registry.load(self.asset_id)
             self._json(
@@ -73,13 +86,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         "name": pack.display_name,
                         "metadata": pack.metadata,
                     },
-                    "data_status": {
-                        "mode": "sample",
-                        "message": "Bundled demonstration evidence; live connectors are not configured",
-                        "newest_observation": max(
-                            (item.observed_at for item in evidence), default=None
-                        ),
-                    },
+                    "data_status": data_status,
                     "factors": [asdict(factor) for factor in pack.factors],
                     "evidence": [asdict(item) for item in evidence],
                 }
@@ -107,10 +114,14 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--open", action="store_true", dest="open_browser")
+    parser.add_argument("--sample", action="store_true", help="Use bundled sample data")
     args = parser.parse_args()
 
     DashboardHandler.asset_id = args.asset.upper()
     DashboardHandler.evidence_path = args.evidence.resolve()
+    DashboardHandler.live_service = None if args.sample else LiveEvidenceService(
+        Path("data/live_evidence.json").resolve()
+    )
     server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)
     url = f"http://{args.host}:{args.port}"
     print(f"Macro dashboard running at {url}")
