@@ -1,23 +1,19 @@
 [
-  {
-    "factor": "real_yields",
-    "horizon": "intermediate",
-    "score": 65,
-    "confidence": 0.9,
-    "observed_at": "2026-06-20T12:00:00+00:00",
-    "source": "example:real-yields",
-    "summary": "Falling real yields support gold",
-    "significance": 0.9
-  },
-  {
-    "factor": "usd",
-    "horizon": "intermediate",
-    "score": -50,
-    "confidence": 0.8,
-    "observed_at": "2026-06-20T12:00:00+00:00",
-    "source": "example:dxy",
-    "summary": "A stronger dollar opposes the bullish thesis",
-    "significance": 0.8
-  }
-]
+  {"factor":"fed_policy","horizon":"structural","score":58,"confidence":0.88,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:fed","summary":"Expected easing supports the long-run gold thesis","significance":0.9},
+  {"factor":"real_yields","horizon":"structural","score":72,"confidence":0.9,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:tips","summary":"The projected real-yield path is falling","significance":0.92},
+  {"factor":"usd","horizon":"structural","score":35,"confidence":0.76,"observed_at":"2026-06-19T12:00:00+00:00","source":"example:dxy","summary":"Long-run dollar momentum is softening","significance":0.75},
+  {"factor":"geopolitics","horizon":"structural","score":48,"confidence":0.72,"observed_at":"2026-06-18T12:00:00+00:00","source":"example:geopolitics","summary":"Persistent strategic tension maintains a risk premium","significance":0.8},
+  {"factor":"central_bank_demand","horizon":"structural","score":82,"confidence":0.94,"observed_at":"2026-06-15T12:00:00+00:00","source":"example:official-flows","summary":"Official-sector accumulation remains strong","significance":0.95},
 
+  {"factor":"fed_policy","horizon":"intermediate","score":52,"confidence":0.84,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:fed","summary":"Recent communication leans gradually dovish","significance":0.85},
+  {"factor":"real_yields","horizon":"intermediate","score":65,"confidence":0.9,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:real-yields","summary":"Falling real yields support gold","significance":0.9},
+  {"factor":"usd","horizon":"intermediate","score":-50,"confidence":0.8,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:dxy","summary":"A stronger dollar opposes the bullish thesis","significance":0.8},
+  {"factor":"inflation","horizon":"intermediate","score":28,"confidence":0.72,"observed_at":"2026-06-17T12:00:00+00:00","source":"example:inflation","summary":"Disinflation improves the probability of easing","significance":0.65},
+  {"factor":"growth","horizon":"intermediate","score":38,"confidence":0.74,"observed_at":"2026-06-16T12:00:00+00:00","source":"example:growth","summary":"Slower activity is mildly supportive","significance":0.7},
+
+  {"factor":"fed_policy","horizon":"tactical","score":30,"confidence":0.68,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:fed","summary":"Near-term policy repricing is modestly supportive","significance":0.65},
+  {"factor":"real_yields","horizon":"tactical","score":55,"confidence":0.82,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:real-yields","summary":"Weekly real-yield momentum is lower","significance":0.82},
+  {"factor":"usd","horizon":"tactical","score":42,"confidence":0.76,"observed_at":"2026-06-20T12:00:00+00:00","source":"example:dxy","summary":"The dollar has weakened over the latest sessions","significance":0.75},
+  {"factor":"geopolitics","horizon":"tactical","score":-36,"confidence":0.66,"observed_at":"2026-06-19T12:00:00+00:00","source":"example:geopolitics","summary":"Recent de-escalation reduces immediate safe-haven demand","significance":0.62},
+  {"factor":"growth","horizon":"tactical","score":22,"confidence":0.62,"observed_at":"2026-06-18T12:00:00+00:00","source":"example:growth","summary":"Soft data provide a small defensive bid","significance":0.55}
+]

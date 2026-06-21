@@ -14,12 +14,13 @@ dev = ["pytest>=8", "ruff>=0.5"]
 
 [project.scripts]
 macro-engine = "macro_engine.cli:main"
+macro-dashboard = "macro_engine.web:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-macro_engine = ["assets/*.json"]
+macro_engine = ["assets/*.json", "static/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -27,4 +28,3 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-

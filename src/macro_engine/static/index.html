@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Auditable macro regime dashboard">
+  <title>Macro Compass</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <main class="shell">
+    <header class="hero">
+      <div class="brand-row">
+        <div class="asset-chip" id="asset-chip">XAU · USD</div>
+        <div class="wordmark">MACRO COMPASS</div>
+        <div class="live-pill"><span></span>LOCAL ENGINE</div>
+      </div>
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Directional regime intelligence</p>
+          <h1>Where the macro is<br><em>leaning on gold.</em></h1>
+          <p class="dek" id="summary">Loading the latest assessment from the local engine…</p>
+        </div>
+        <div class="score-orbit" aria-label="Overall regime score">
+          <div class="orbit-ring"></div>
+          <div class="orbit-content">
+            <span>REGIME SCORE</span>
+            <strong id="overall-score">—</strong>
+            <small id="overall-direction">CALCULATING</small>
+          </div>
+        </div>
+      </div>
+      <div class="meta-line">
+        <span id="generated">GENERATED —</span>
+        <span>•</span>
+        <span id="pack-version">MODEL —</span>
+        <button id="refresh" type="button">↻ REFRESH</button>
+      </div>
+    </header>
+
+    <section class="horizon-grid" id="horizon-grid" aria-label="Time horizon assessments"></section>
+
+    <section class="lower-grid">
+      <div class="panel factor-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Evidence map</p>
+            <h2>Factor board</h2>
+          </div>
+          <div class="legend"><i class="positive"></i>supportive <i class="negative"></i>opposing</div>
+        </div>
+        <div id="factor-list" class="factor-list"></div>
+      </div>
+
+      <aside class="side-stack">
+        <section class="panel thesis-panel">
+          <p class="eyebrow">Current read</p>
+          <h2>Thesis</h2>
+          <p id="thesis">Waiting for the engine…</p>
+          <div class="confidence-line">
+            <span>Model confidence</span><strong id="confidence">—</strong>
+          </div>
+          <div class="progress"><div id="confidence-bar"></div></div>
+        </section>
+        <section class="panel conflict-panel">
+          <p class="eyebrow">Pressure points</p>
+          <h2>Contradictions</h2>
+          <div id="contradictions"></div>
+        </section>
+      </aside>
+    </section>
+    <footer>Auditable signals · deterministic scoring · local-first architecture</footer>
+  </main>
+  <div id="error" class="error-toast" role="alert"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
+

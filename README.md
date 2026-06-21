@@ -20,11 +20,47 @@ asset pack -> validation -> decay + weighted scorer + contradiction detection
 
 ## Run locally
 
+### Mini web app
+
+Double-click `run-dashboard.cmd`, or run it from PowerShell:
+
+```powershell
+.\run-dashboard.cmd
+```
+
+The dashboard opens at `http://127.0.0.1:8765`. Keep the terminal window open while using it;
+press `Ctrl+C` there to stop the server. It uses only Python's standard library.
+
+### Command-line output
+
+From PowerShell in the project directory, use the project launcher:
+
+```powershell
+.\run-engine.cmd XAUUSD examples\xauusd_evidence.json
+```
+
+The launcher finds Python and runs the source tree directly, so it does not depend on the
+`macro-engine` command being registered in `PATH`. On this workstation it automatically uses
+`C:\msys64\ucrt64\bin\python.exe`. The `.cmd` launcher also works when PowerShell's execution
+policy blocks `.ps1` scripts.
+
+Alternatively, invoke this workstation's interpreter directly:
+
+```powershell
+$env:PYTHONPATH = "$PWD\src"
+& "C:\msys64\ucrt64\bin\python.exe" -m macro_engine.cli XAUUSD examples\xauusd_evidence.json
+```
+
+For an editable installation and the shorter command, first ensure Python is available in the
+same terminal, then run:
+
 ```powershell
 python -m pip install -e .
-macro-engine XAUUSD examples/xauusd_evidence.json
-python -m unittest discover -s tests -v
+python -m macro_engine.cli XAUUSD examples\xauusd_evidence.json
 ```
+
+The `python -m ...` form remains reliable even when the directory containing installed console
+scripts is absent from `PATH`.
 
 No runtime dependencies are required for the reference core. Production adapters (Postgres,
 OpenAI, market/news APIs, Streamlit, and schedulers) belong outside the domain package and can
