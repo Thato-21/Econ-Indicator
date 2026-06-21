@@ -24,6 +24,7 @@ class AssetPack:
     factors: tuple[FactorConfig, ...]
     weights: dict[Horizon, dict[str, float]]
     horizon_weights: dict[Horizon, float]
+    horizon_decay_multipliers: dict[Horizon, float]
     metadata: dict[str, Any]
 
     @classmethod
@@ -35,6 +36,13 @@ class AssetPack:
             factors=tuple(FactorConfig(**item) for item in raw["factors"]),
             weights={Horizon(k): v for k, v in raw["weights"].items()},
             horizon_weights={Horizon(k): v for k, v in raw["horizon_weights"].items()},
+            horizon_decay_multipliers={
+                Horizon(k): v
+                for k, v in raw.get(
+                    "horizon_decay_multipliers",
+                    {"structural": 1.0, "intermediate": 1.0, "tactical": 1.0},
+                ).items()
+            },
             metadata=raw.get("metadata", {}),
         )
         pack.validate()
@@ -58,9 +66,15 @@ class AssetPack:
             raise ValueError(f"{self.asset_id}: every horizon requires an overall weight")
         if abs(sum(self.horizon_weights.values()) - 1.0) > 1e-6:
             raise ValueError(f"{self.asset_id}: horizon weights must sum to 1")
+        if set(self.horizon_decay_multipliers) != set(Horizon):
+            raise ValueError(f"{self.asset_id}: every horizon requires a decay multiplier")
+        if any(value <= 0 for value in self.horizon_decay_multipliers.values()):
+            raise ValueError(f"{self.asset_id}: decay multipliers must be positive")
 
-    def half_life(self, factor_id: str) -> timedelta:
+    def half_life(self, factor_id: str, horizon: Horizon) -> timedelta:
         factor = next((item for item in self.factors if item.id == factor_id), None)
         if factor is None:
             raise KeyError(f"factor {factor_id!r} is not in asset pack {self.asset_id!r}")
-        return timedelta(days=factor.decay_half_life_days)
+        return timedelta(
+            days=factor.decay_half_life_days * self.horizon_decay_multipliers[horizon]
+        )

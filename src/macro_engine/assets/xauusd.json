@@ -5,7 +5,7 @@
   "metadata": {
     "quote_currency": "USD",
     "benchmark": "XAUUSD spot",
-    "horizons": {"structural": "6-18m", "intermediate": "1-6m", "tactical": "2-8w"}
+    "horizons": {"structural": "months-1y", "intermediate": "weeks-3m", "tactical": "days-2w"}
   },
   "factors": [
     {"id": "fed_policy", "label": "Federal Reserve policy", "category": "monetary_policy", "decay_half_life_days": 60, "why": "A dovish Fed normally lowers expected real yields and weakens the dollar, both supportive for gold. A hawkish Fed does the reverse."},
@@ -24,5 +24,6 @@
     "intermediate": {"fed_policy": 0.16, "real_yields": 0.17, "usd": 0.15, "geopolitics": 0.10, "inflation": 0.08, "growth": 0.08, "central_bank_demand": 0.05, "nominal_yields": 0.08, "risk_sentiment": 0.06, "flows": 0.07},
     "tactical": {"fed_policy": 0.10, "real_yields": 0.13, "usd": 0.18, "geopolitics": 0.15, "inflation": 0.05, "growth": 0.06, "central_bank_demand": 0.03, "nominal_yields": 0.10, "risk_sentiment": 0.10, "flows": 0.10}
   },
-  "horizon_weights": {"structural": 0.4, "intermediate": 0.35, "tactical": 0.25}
+  "horizon_weights": {"structural": 0.4, "intermediate": 0.35, "tactical": 0.25},
+  "horizon_decay_multipliers": {"structural": 4.0, "intermediate": 1.5, "tactical": 0.35}
 }

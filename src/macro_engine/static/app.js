@@ -1,7 +1,7 @@
 const horizonNames = {
-  structural: ["Long term", "6–18 months · policy & regime"],
-  intermediate: ["Medium term", "1–6 months · data momentum"],
-  tactical: ["Short term", "2–8 weeks · catalysts & flows"]
+  structural: ["Long term", "Months → one year · policy & regime"],
+  intermediate: ["Medium term", "Weeks → a couple of months · data momentum"],
+  tactical: ["Short term", "Days → two weeks · catalysts & flows"]
 };
 
 const pretty = value => value.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());

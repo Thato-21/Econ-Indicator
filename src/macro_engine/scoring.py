@@ -41,7 +41,7 @@ class TransparentScorer:
             effective_weight = 0.0
             for item in observations:
                 age = max(0.0, (as_of - item.observed_at).total_seconds())
-                half_life = pack.half_life(factor_id).total_seconds()
+                half_life = pack.half_life(factor_id, horizon).total_seconds()
                 freshness = math.pow(0.5, age / half_life)
                 strength = item.confidence * item.significance * freshness
                 weighted_score += item.score * strength
@@ -65,4 +65,3 @@ class TransparentScorer:
             direction=direction_for(score),
             factors=tuple(results),
         )
-

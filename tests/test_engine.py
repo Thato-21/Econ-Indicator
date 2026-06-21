@@ -9,10 +9,16 @@ from macro_engine.domain import Direction, Evidence, Horizon
 NOW = datetime(2026, 6, 21, tzinfo=UTC)
 
 
-def evidence(factor: str, score: float, *, age_days: int = 0) -> Evidence:
+def evidence(
+    factor: str,
+    score: float,
+    *,
+    age_days: int = 0,
+    horizon: Horizon = Horizon.INTERMEDIATE,
+) -> Evidence:
     return Evidence(
         factor=factor,
-        horizon=Horizon.INTERMEDIATE,
+        horizon=horizon,
         score=score,
         confidence=1,
         significance=1,
@@ -52,6 +58,20 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(stale_h.score, fresh_h.score)
         self.assertLess(stale_h.confidence, fresh_h.confidence)
 
+    def test_each_horizon_uses_a_different_evidence_memory(self) -> None:
+        result = MacroEngine().assess(
+            "XAUUSD",
+            [
+                evidence("real_yields", 50, age_days=30, horizon=Horizon.STRUCTURAL),
+                evidence("real_yields", 50, age_days=30, horizon=Horizon.INTERMEDIATE),
+                evidence("real_yields", 50, age_days=30, horizon=Horizon.TACTICAL),
+            ],
+            NOW,
+        )
+        confidence = {h.horizon: h.confidence for h in result.horizons}
+        self.assertGreater(confidence[Horizon.STRUCTURAL], confidence[Horizon.INTERMEDIATE])
+        self.assertGreater(confidence[Horizon.INTERMEDIATE], confidence[Horizon.TACTICAL])
+
     def test_invalid_asset_pack_fails_fast(self) -> None:
         raw = {
             "asset_id": "BAD",
@@ -61,7 +81,12 @@ class EngineTests(unittest.TestCase):
                 {"id": "x", "label": "X", "category": "test", "decay_half_life_days": 1}
             ],
             "weights": {h.value: {"x": 0.5} for h in Horizon},
-            "horizon_weights": {"structural": 0.4, "intermediate": 0.4, "tactical": 0.2},
+        "horizon_weights": {"structural": 0.4, "intermediate": 0.4, "tactical": 0.2},
+        "horizon_decay_multipliers": {
+            "structural": 4.0,
+            "intermediate": 1.5,
+            "tactical": 0.35,
+        },
         }
         with self.assertRaisesRegex(ValueError, "factor weights must sum to 1"):
             AssetPack.from_dict(raw)

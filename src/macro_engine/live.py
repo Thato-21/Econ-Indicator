@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Callable
 
@@ -74,24 +75,26 @@ def _horizon_evidence(
 
 def collect_real_yields() -> list[Evidence]:
     year = datetime.now(UTC).year
-    url = (
+    urls = [
         "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/"
-        f"pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value={year}"
-    )
-    root = ET.fromstring(_request(url))
+        f"pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value={value}"
+        for value in (year - 1, year)
+    ]
     rows: list[tuple[datetime, float]] = []
-    for entry in root.findall("{http://www.w3.org/2005/Atom}entry"):
-        props = entry.find(".//{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}properties")
-        if props is None:
-            continue
-        values = {node.tag.split("}")[-1]: node.text for node in props}
-        date_text = values.get("NEW_DATE") or values.get("Date")
-        yield_text = values.get("TC_10YEAR") or values.get("BC_10YEAR")
-        if date_text and yield_text:
-            observed = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-            if observed.tzinfo is None:
-                observed = observed.replace(tzinfo=UTC)
-            rows.append((observed, float(yield_text)))
+    for url in urls:
+        root = ET.fromstring(_request(url))
+        for entry in root.findall("{http://www.w3.org/2005/Atom}entry"):
+            props = entry.find(".//{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}properties")
+            if props is None:
+                continue
+            values = {node.tag.split("}")[-1]: node.text for node in props}
+            date_text = values.get("NEW_DATE") or values.get("Date")
+            yield_text = values.get("TC_10YEAR") or values.get("BC_10YEAR")
+            if date_text and yield_text:
+                observed = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+                if observed.tzinfo is None:
+                    observed = observed.replace(tzinfo=UTC)
+                rows.append((observed, float(yield_text)))
     rows.sort(key=lambda item: item[0])
     if len(rows) < 6:
         raise ValueError("Treasury returned insufficient real-yield history")
@@ -101,38 +104,40 @@ def collect_real_yields() -> list[Evidence]:
         return latest - rows[max(0, len(rows) - index)][1]
 
     scores = {
-        Horizon.STRUCTURAL: _clamp(-delta(60) * 80),
-        Horizon.INTERMEDIATE: _clamp(-delta(22) * 110),
-        Horizon.TACTICAL: _clamp(-delta(6) * 140),
+        Horizon.STRUCTURAL: _clamp(-delta(252) * 70),
+        Horizon.INTERMEDIATE: _clamp(-delta(45) * 100),
+        Horizon.TACTICAL: _clamp(-delta(10) * 140),
     }
     trend = "falling" if scores[Horizon.INTERMEDIATE] > 0 else "rising"
     return _horizon_evidence(
         "real_yields", scores, 0.95, latest_date, "US Treasury",
         f"10Y real yield {latest:.2f}%, {trend} over the intermediate window",
-        {"url": url, "latest_value": latest, "unit": "percent"},
+        {"url": urls[-1], "latest_value": latest, "unit": "percent", "windows": "1y/45d/10d"},
     )
 
 
 def collect_nominal_yields() -> list[Evidence]:
     year = datetime.now(UTC).year
-    url = (
+    urls = [
         "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/"
-        f"pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={year}"
-    )
-    root = ET.fromstring(_request(url))
+        f"pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={value}"
+        for value in (year - 1, year)
+    ]
     rows: list[tuple[datetime, float]] = []
-    for entry in root.findall("{http://www.w3.org/2005/Atom}entry"):
-        props = entry.find(".//{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}properties")
-        if props is None:
-            continue
-        values = {node.tag.split("}")[-1]: node.text for node in props}
-        date_text = values.get("NEW_DATE") or values.get("Date")
-        yield_text = values.get("BC_10YEAR")
-        if date_text and yield_text:
-            observed = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-            if observed.tzinfo is None:
-                observed = observed.replace(tzinfo=UTC)
-            rows.append((observed, float(yield_text)))
+    for url in urls:
+        root = ET.fromstring(_request(url))
+        for entry in root.findall("{http://www.w3.org/2005/Atom}entry"):
+            props = entry.find(".//{http://schemas.microsoft.com/ado/2007/08/dataservices/metadata}properties")
+            if props is None:
+                continue
+            values = {node.tag.split("}")[-1]: node.text for node in props}
+            date_text = values.get("NEW_DATE") or values.get("Date")
+            yield_text = values.get("BC_10YEAR")
+            if date_text and yield_text:
+                observed = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+                if observed.tzinfo is None:
+                    observed = observed.replace(tzinfo=UTC)
+                rows.append((observed, float(yield_text)))
     rows.sort(key=lambda item: item[0])
     if len(rows) < 6:
         raise ValueError("Treasury returned insufficient nominal-yield history")
@@ -143,20 +148,20 @@ def collect_nominal_yields() -> list[Evidence]:
         return _clamp(-(latest - old) * multiplier)
 
     scores = {
-        Horizon.STRUCTURAL: score(60, 55),
-        Horizon.INTERMEDIATE: score(22, 75),
-        Horizon.TACTICAL: score(6, 95),
+        Horizon.STRUCTURAL: score(252, 50),
+        Horizon.INTERMEDIATE: score(45, 70),
+        Horizon.TACTICAL: score(10, 95),
     }
     trend = "falling" if scores[Horizon.INTERMEDIATE] > 0 else "rising"
     return _horizon_evidence(
         "nominal_yields", scores, 0.92, latest_date, "US Treasury",
         f"10Y Treasury yield {latest:.2f}%, {trend} over the intermediate window",
-        {"url": url, "latest_value": latest, "unit": "percent"},
+        {"url": urls[-1], "latest_value": latest, "unit": "percent", "windows": "1y/45d/10d"},
     )
 
 
 def collect_fed_policy() -> list[Evidence]:
-    url = "https://markets.newyorkfed.org/api/rates/unsecured/effr/last/60.json"
+    url = "https://markets.newyorkfed.org/api/rates/unsecured/effr/last/360.json"
     data = _json(url).get("refRates", [])
     rows = sorted(
         ((datetime.fromisoformat(item["effectiveDate"]).replace(tzinfo=UTC), float(item["percentRate"])) for item in data),
@@ -165,12 +170,14 @@ def collect_fed_policy() -> list[Evidence]:
     if not rows:
         raise ValueError("New York Fed returned no EFFR observations")
     latest_date, latest = rows[-1]
-    oldest = rows[0][1]
-    recent = rows[max(0, len(rows) - 6)][1]
-    medium_score = _clamp(-(latest - oldest) * 90)
+    long_rate = rows[max(0, len(rows) - 252)][1]
+    medium_rate = rows[max(0, len(rows) - 45)][1]
+    recent = rows[max(0, len(rows) - 10)][1]
+    long_score = _clamp(-(latest - long_rate) * 75)
+    medium_score = _clamp(-(latest - medium_rate) * 95)
     tactical_score = _clamp(-(latest - recent) * 120)
     scores = {
-        Horizon.STRUCTURAL: medium_score * 0.75,
+        Horizon.STRUCTURAL: long_score,
         Horizon.INTERMEDIATE: medium_score,
         Horizon.TACTICAL: tactical_score,
     }
@@ -183,7 +190,7 @@ def collect_fed_policy() -> list[Evidence]:
 
 
 def collect_usd() -> list[Evidence]:
-    url = "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=6mo&interval=1d"
+    url = "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=1y&interval=1d"
     result = _json(url)["chart"]["result"][0]
     closes = [value for value in result["indicators"]["quote"][0]["close"] if value is not None]
     timestamps = result["timestamp"]
@@ -196,9 +203,9 @@ def collect_usd() -> list[Evidence]:
         return (latest / previous - 1) * 100
 
     scores = {
-        Horizon.STRUCTURAL: _clamp(-pct(120) * 12),
-        Horizon.INTERMEDIATE: _clamp(-pct(30) * 18),
-        Horizon.TACTICAL: _clamp(-pct(5) * 25),
+        Horizon.STRUCTURAL: _clamp(-pct(250) * 10),
+        Horizon.INTERMEDIATE: _clamp(-pct(45) * 17),
+        Horizon.TACTICAL: _clamp(-pct(10) * 24),
     }
     date = datetime.fromtimestamp(timestamps[-1], UTC)
     trend = "weakening" if scores[Horizon.INTERMEDIATE] > 0 else "strengthening"
@@ -209,7 +216,7 @@ def collect_usd() -> list[Evidence]:
     )
 
 
-def _market_chart(symbol: str, range_: str = "6mo") -> tuple[list[float], list[float], list[int], str]:
+def _market_chart(symbol: str, range_: str = "1y") -> tuple[list[float], list[float], list[int], str]:
     encoded = urllib.parse.quote(symbol, safe="")
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded}?range={range_}&interval=1d"
     result = _json(url)["chart"]["result"][0]
@@ -230,9 +237,9 @@ def collect_risk_sentiment() -> list[Evidence]:
 
     level_component = (latest - 20) * 2
     scores = {
-        Horizon.STRUCTURAL: _clamp(level_component * 0.35 + pct(90) * 0.25),
-        Horizon.INTERMEDIATE: _clamp(level_component * 0.6 + pct(30) * 0.55),
-        Horizon.TACTICAL: _clamp(level_component + pct(5) * 0.9),
+        Horizon.STRUCTURAL: _clamp(level_component * 0.25 + pct(120) * 0.2),
+        Horizon.INTERMEDIATE: _clamp(level_component * 0.6 + pct(45) * 0.5),
+        Horizon.TACTICAL: _clamp(level_component + pct(10) * 0.85),
     }
     observed = datetime.fromtimestamp(timestamps[-1], UTC)
     mood = "risk-off" if scores[Horizon.TACTICAL] > 8 else "risk-on" if scores[Horizon.TACTICAL] < -8 else "mixed"
@@ -258,9 +265,9 @@ def collect_flows_proxy() -> list[Evidence]:
         return _clamp(change * multiplier * min(1.5, max(0.7, volume_ratio)))
 
     scores = {
-        Horizon.STRUCTURAL: momentum(120, 5),
-        Horizon.INTERMEDIATE: momentum(30, 7),
-        Horizon.TACTICAL: momentum(5, 10),
+        Horizon.STRUCTURAL: momentum(250, 4),
+        Horizon.INTERMEDIATE: momentum(45, 7),
+        Horizon.TACTICAL: momentum(10, 10),
     }
     observed = datetime.fromtimestamp(timestamps[-1], UTC)
     direction = "accumulation" if scores[Horizon.INTERMEDIATE] > 8 else "distribution" if scores[Horizon.INTERMEDIATE] < -8 else "balanced"
@@ -296,11 +303,14 @@ def collect_bls() -> list[Evidence]:
         raise ValueError("BLS returned insufficient macro history")
     yoy = (cpi[-1][1] / cpi[-13][1] - 1) * 100
     prior_yoy = (cpi[-2][1] / cpi[-14][1] - 1) * 100
-    inflation_momentum = yoy - prior_yoy
+    medium_yoy = (cpi[-4][1] / cpi[-16][1] - 1) * 100
+    year_ago_yoy = (cpi[-13][1] / cpi[-25][1] - 1) * 100
+    latest_mom_annualized = (cpi[-1][1] / cpi[-2][1] - 1) * 1200
+    inflation_momentum = yoy - medium_yoy
     inflation_scores = {
-        Horizon.STRUCTURAL: _clamp((yoy - 2) * 12),
+        Horizon.STRUCTURAL: _clamp(-(yoy - year_ago_yoy) * 25 + (yoy - 2) * 4),
         Horizon.INTERMEDIATE: _clamp(-inflation_momentum * 45),
-        Horizon.TACTICAL: _clamp(-inflation_momentum * 30),
+        Horizon.TACTICAL: _clamp(-(latest_mom_annualized - yoy) * 12),
     }
     inflation = _horizon_evidence(
         "inflation", inflation_scores, 0.88, cpi[-1][0], "US Bureau of Labor Statistics",
@@ -308,14 +318,17 @@ def collect_bls() -> list[Evidence]:
         {"url": url, "series": "CUSR0000SA0", "latest_value": yoy, "unit": "percent_yoy"},
     )
 
+    payroll_12m = (payrolls[-1][1] - payrolls[-13][1]) / 12
     payroll_3m = (payrolls[-1][1] - payrolls[-4][1]) / 3
-    unemployment_change = unemployment[-1][1] - unemployment[-4][1]
+    payroll_latest = payrolls[-1][1] - payrolls[-2][1]
+    unemployment_12m = unemployment[-1][1] - unemployment[-13][1]
+    unemployment_3m = unemployment[-1][1] - unemployment[-4][1]
+    unemployment_latest = unemployment[-1][1] - unemployment[-2][1]
     # Softer employment raises easing/recession support for gold; cap extreme release noise.
-    growth_base = _clamp((150 - payroll_3m) / 3 + unemployment_change * 35)
     growth_scores = {
-        Horizon.STRUCTURAL: growth_base * 0.7,
-        Horizon.INTERMEDIATE: growth_base,
-        Horizon.TACTICAL: growth_base * 0.8,
+        Horizon.STRUCTURAL: _clamp((150 - payroll_12m) / 3 + unemployment_12m * 30),
+        Horizon.INTERMEDIATE: _clamp((150 - payroll_3m) / 3 + unemployment_3m * 35),
+        Horizon.TACTICAL: _clamp((150 - payroll_latest) / 2.5 + unemployment_latest * 45),
     }
     growth = _horizon_evidence(
         "growth", growth_scores, 0.86, max(unemployment[-1][0], payrolls[-1][0]),
@@ -329,27 +342,49 @@ def collect_bls() -> list[Evidence]:
 def collect_news() -> list[Evidence]:
     query = '(war OR conflict OR sanctions OR military OR ceasefire OR "central bank gold" OR "gold reserves")'
     url = "https://api.gdeltproject.org/api/v2/doc/doc?" + urllib.parse.urlencode(
-        {"query": query, "mode": "artlist", "maxrecords": 100, "format": "json", "timespan": "7d"}
+        {"query": query, "mode": "artlist", "maxrecords": 100, "format": "json", "timespan": "3months"}
     )
     source = "GDELT global news index"
     try:
         articles = _json(url).get("articles", [])
-        headlines = [(item.get("title") or "").lower() for item in articles]
+        records = []
+        for item in articles:
+            stamp = item.get("seendate", "")
+            try:
+                observed = datetime.strptime(stamp[:15], "%Y%m%dT%H%M%S").replace(tzinfo=UTC)
+            except ValueError:
+                observed = datetime.now(UTC)
+            records.append(((item.get("title") or "").lower(), observed))
     except Exception:
         rss_url = "https://news.google.com/rss/search?" + urllib.parse.urlencode(
-            {"q": 'war OR sanctions OR ceasefire OR "central bank" gold', "hl": "en-US", "gl": "US", "ceid": "US:en"}
+            {"q": 'war OR sanctions OR ceasefire OR "central bank" gold when:1y', "hl": "en-US", "gl": "US", "ceid": "US:en"}
         )
         rss = ET.fromstring(_request(rss_url))
         items = rss.findall("./channel/item")
-        headlines = [(item.findtext("title") or "").lower() for item in items]
-        articles = [{"title": title} for title in headlines]
+        records = []
+        for item in items:
+            try:
+                observed = parsedate_to_datetime(item.findtext("pubDate") or "").astimezone(UTC)
+            except (TypeError, ValueError):
+                observed = datetime.now(UTC)
+            records.append(((item.findtext("title") or "").lower(), observed))
+        articles = [{"title": title} for title, _ in records]
         url = rss_url
         source = "Google News RSS (GDELT fallback)"
-    escalation = ("war", "attack", "strike", "invasion", "sanction", "military", "escalat", "missile")
+    headlines = [title for title, _ in records]
+    escalation = ("war", "attack", "strike", "invasion", "sanction", "military", "escalat", "missile", "closure", "closed")
     deescalation = ("ceasefire", "peace deal", "truce", "de-escalat", "talks resume")
-    up = sum(any(word in title for word in escalation) for title in headlines)
-    down = sum(any(word in title for word in deescalation) for title in headlines)
-    geo_score = _clamp((up - down * 1.4) * 5)
+    now = datetime.now(UTC)
+
+    def geo_for(days: int) -> tuple[float, int, int]:
+        selected = [title for title, observed in records if now - observed <= timedelta(days=days)]
+        up_count = sum(any(word in title for word in escalation) for title in selected)
+        down_count = sum(any(word in title for word in deescalation) for title in selected)
+        return _clamp((up_count - down_count * 1.4) * 5), up_count, down_count
+
+    long_geo, long_up, long_down = geo_for(365)
+    medium_geo, medium_up, medium_down = geo_for(90)
+    tactical_geo, tactical_up, tactical_down = geo_for(14)
     gold_articles = [title for title in headlines if "central bank" in title and ("gold" in title or "reserve" in title)]
     buying = sum(any(word in title for word in ("buy", "purchas", "add", "accumulat", "record")) for title in gold_articles)
     selling = sum(any(word in title for word in ("sell", "reduce", "cut", "decline")) for title in gold_articles)
@@ -357,10 +392,10 @@ def collect_news() -> list[Evidence]:
     observed = datetime.now(UTC)
     geo = _horizon_evidence(
         "geopolitics",
-        {Horizon.STRUCTURAL: geo_score * 0.65, Horizon.INTERMEDIATE: geo_score * 0.85, Horizon.TACTICAL: geo_score},
+        {Horizon.STRUCTURAL: long_geo * 0.65, Horizon.INTERMEDIATE: medium_geo * 0.85, Horizon.TACTICAL: tactical_geo},
         min(0.8, 0.35 + len(articles) / 200), observed, source,
-        f"{up} escalation and {down} de-escalation headlines in the last 7 days",
-        {"url": url, "article_count": len(articles), "method": "transparent keyword classifier"},
+        f"{tactical_up} escalation and {tactical_down} de-escalation headlines in the last 14 days",
+        {"url": url, "article_count": len(articles), "method": "transparent keyword classifier", "windows": "365d/90d/14d"},
     )
     demand = _horizon_evidence(
         "central_bank_demand",
