@@ -1,0 +1,23 @@
+[
+  {
+    "factor": "real_yields",
+    "horizon": "intermediate",
+    "score": 65,
+    "confidence": 0.9,
+    "observed_at": "2026-06-20T12:00:00+00:00",
+    "source": "example:real-yields",
+    "summary": "Falling real yields support gold",
+    "significance": 0.9
+  },
+  {
+    "factor": "usd",
+    "horizon": "intermediate",
+    "score": -50,
+    "confidence": 0.8,
+    "observed_at": "2026-06-20T12:00:00+00:00",
+    "source": "example:dxy",
+    "summary": "A stronger dollar opposes the bullish thesis",
+    "significance": 0.8
+  }
+]
+

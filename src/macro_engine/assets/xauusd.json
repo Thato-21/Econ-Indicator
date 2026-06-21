@@ -1,0 +1,25 @@
+{
+  "asset_id": "XAUUSD",
+  "display_name": "Gold / US Dollar",
+  "version": "1.0.0",
+  "metadata": {
+    "quote_currency": "USD",
+    "benchmark": "XAUUSD spot",
+    "horizons": {"structural": "6-18m", "intermediate": "1-6m", "tactical": "2-8w"}
+  },
+  "factors": [
+    {"id": "fed_policy", "label": "Federal Reserve policy", "category": "monetary_policy", "decay_half_life_days": 60},
+    {"id": "real_yields", "label": "US real yields", "category": "rates", "decay_half_life_days": 30},
+    {"id": "usd", "label": "US dollar", "category": "fx", "decay_half_life_days": 30},
+    {"id": "geopolitics", "label": "Geopolitical risk", "category": "geopolitics", "decay_half_life_days": 45},
+    {"id": "inflation", "label": "Inflation regime", "category": "macro", "decay_half_life_days": 45},
+    {"id": "growth", "label": "Growth regime", "category": "macro", "decay_half_life_days": 45},
+    {"id": "central_bank_demand", "label": "Official-sector gold demand", "category": "flows", "decay_half_life_days": 120}
+  ],
+  "weights": {
+    "structural": {"fed_policy": 0.25, "real_yields": 0.20, "usd": 0.15, "geopolitics": 0.15, "inflation": 0.10, "growth": 0.10, "central_bank_demand": 0.05},
+    "intermediate": {"fed_policy": 0.25, "real_yields": 0.20, "usd": 0.15, "geopolitics": 0.15, "inflation": 0.10, "growth": 0.10, "central_bank_demand": 0.05},
+    "tactical": {"fed_policy": 0.25, "real_yields": 0.20, "usd": 0.15, "geopolitics": 0.15, "inflation": 0.10, "growth": 0.10, "central_bank_demand": 0.05}
+  },
+  "horizon_weights": {"structural": 0.4, "intermediate": 0.35, "tactical": 0.25}
+}
