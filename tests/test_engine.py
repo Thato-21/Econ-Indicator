@@ -15,13 +15,15 @@ def evidence(
     *,
     age_days: int = 0,
     horizon: Horizon = Horizon.INTERMEDIATE,
+    confidence: float = 1,
+    significance: float = 1,
 ) -> Evidence:
     return Evidence(
         factor=factor,
         horizon=horizon,
         score=score,
-        confidence=1,
-        significance=1,
+        confidence=confidence,
+        significance=significance,
         observed_at=NOW - timedelta(days=age_days),
         source="test",
         summary=f"{factor} evidence",
@@ -48,15 +50,39 @@ class EngineTests(unittest.TestCase):
             ("intermediate: bullish fed_policy, real_yields vs bearish usd",),
         )
 
-    def test_stale_evidence_loses_confidence_but_not_its_sign(self) -> None:
+    def test_stale_evidence_loses_confidence_and_effective_impact(self) -> None:
         fresh = MacroEngine().assess("XAUUSD", [evidence("real_yields", 80)], NOW)
         stale = MacroEngine().assess(
             "XAUUSD", [evidence("real_yields", 80, age_days=60)], NOW
         )
         fresh_h = next(h for h in fresh.horizons if h.horizon == Horizon.INTERMEDIATE)
         stale_h = next(h for h in stale.horizons if h.horizon == Horizon.INTERMEDIATE)
-        self.assertEqual(stale_h.score, fresh_h.score)
+        self.assertLess(stale_h.score, fresh_h.score)
+        self.assertGreater(stale_h.score, 0)
         self.assertLess(stale_h.confidence, fresh_h.confidence)
+
+    def test_top_driver_is_dynamic_and_confidence_adjusted(self) -> None:
+        result = MacroEngine().assess(
+            "XAUUSD",
+            [
+                evidence(
+                    "fed_policy",
+                    100,
+                    horizon=Horizon.TACTICAL,
+                    confidence=0.1,
+                ),
+                evidence(
+                    "risk_sentiment",
+                    60,
+                    horizon=Horizon.TACTICAL,
+                    confidence=1,
+                ),
+            ],
+            NOW,
+        )
+        tactical = next(h for h in result.horizons if h.horizon == Horizon.TACTICAL)
+        strongest = max(tactical.factors, key=lambda factor: abs(factor.contribution))
+        self.assertEqual(strongest.factor, "risk_sentiment")
 
     def test_each_horizon_uses_a_different_evidence_memory(self) -> None:
         result = MacroEngine().assess(

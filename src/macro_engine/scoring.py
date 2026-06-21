@@ -48,7 +48,9 @@ class TransparentScorer:
                 effective_weight += strength
             factor_score = weighted_score / effective_weight if effective_weight else 0.0
             confidence = min(1.0, effective_weight / max(1, len(observations)))
-            contribution = factor_score * weight
+            # Confidence is part of impact, not merely a label. This prevents a stale,
+            # low-significance observation from ranking as a top driver on raw magnitude alone.
+            contribution = factor_score * weight * confidence
             summary = max(observations, key=lambda item: item.observed_at).summary
             results.append(
                 FactorResult(factor_id, factor_score, confidence, contribution, summary)

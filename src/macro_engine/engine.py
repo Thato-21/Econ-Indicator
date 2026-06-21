@@ -30,7 +30,9 @@ class MacroEngine:
             key=lambda factor: abs(factor.contribution),
             reverse=True,
         )[:3]
-        drivers = ", ".join(f"{item.factor} ({item.score:+.0f})" for item in strongest)
+        drivers = ", ".join(
+            f"{item.factor} ({item.contribution:+.1f} weighted points)" for item in strongest
+        )
         narrative = f"{direction_for(overall).value.replace('_', ' ').title()} regime; key drivers: {drivers}."
         return RegimeAssessment(
             asset_id=pack.asset_id,
@@ -55,4 +57,3 @@ class MacroEngine:
                     f"{horizon.horizon.value}: bullish {', '.join(bullish)} vs bearish {', '.join(bearish)}"
                 )
         return tuple(conflicts)
-
